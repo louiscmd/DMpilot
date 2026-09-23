@@ -1,0 +1,190 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>DM Pilot</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header class="top">
+    <div class="brand">DM Pilot</div>
+    <nav class="tabs">
+      <button data-tab="leads" class="active">Leads</button>
+      <button data-tab="campaign">Campaign</button>
+      <button data-tab="send">Send</button>
+      <button data-tab="settings">Settings</button>
+    </nav>
+    <div class="status-bar">
+      <span id="sb-browser" class="dot-label"><i class="dot"></i><span>Browser closed</span></span>
+      <span id="sb-today">0 / 25 sent today</span>
+    </div>
+  </header>
+
+  <main>
+    <!-- LEADS -->
+    <section id="tab-leads" class="tab active">
+      <div class="toolbar">
+        <label class="btn primary">Import file<input id="file" type="file" accept=".json,.csv,.txt" hidden></label>
+        <button class="btn" id="paste-open">Paste leads</button>
+        <span class="sep"></span>
+        <button class="btn" id="gen-btn">Write DMs with Claude</button>
+        <span id="gen-status" class="muted"></span>
+        <span class="grow"></span>
+        <select id="filter">
+          <option value="all">All</option>
+          <option value="new">New</option>
+          <option value="ready">Ready</option>
+          <option value="sent">Sent</option>
+          <option value="failed">Failed</option>
+          <option value="skipped">Skipped</option>
+        </select>
+      </div>
+      <div class="counts" id="counts"></div>
+      <div class="bulk" id="bulk" hidden>
+        <span id="bulk-n"></span>
+        <button class="btn sm" data-bulk="generate">Write DMs</button>
+        <button class="btn sm" data-bulk="requeue">Back to queue</button>
+        <button class="btn sm" data-bulk="skip">Skip</button>
+        <button class="btn sm" data-bulk="clear">Clear message</button>
+        <button class="btn sm danger" data-bulk="delete">Delete</button>
+      </div>
+      <div class="table-wrap">
+        <table class="leads">
+          <thead><tr>
+            <th class="c-check"><input type="checkbox" id="check-all"></th>
+            <th>Account</th>
+            <th>Message</th>
+            <th class="c-status">Status</th>
+          </tr></thead>
+          <tbody id="lead-rows"></tbody>
+        </table>
+        <div id="empty" class="empty">
+          <p><strong>No leads yet.</strong></p>
+          <p class="muted">Import a LeadOS export (JSON) or a CSV with an Instagram column, or paste handles/links one per line.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- CAMPAIGN -->
+    <section id="tab-campaign" class="tab">
+      <div class="card narrow">
+        <h2>How Claude should write your DMs</h2>
+        <p class="muted">Each lead gets its own message based on its LeadOS research. These settings apply to all of them.</p>
+        <label>Your name / brand <input id="c-senderName" placeholder="e.g. Louis, video editor for restaurants"></label>
+        <label>What you offer <span class="req">required</span>
+          <textarea id="c-offer" rows="4" placeholder="Who you are, what you do for clients, the result you get them, and what you want from this first DM (e.g. a reply, a quick call)."></textarea></label>
+        <label>Tone <input id="c-tone"></label>
+        <div class="row">
+          <label>Max words <input id="c-maxWords" type="number" min="15" max="200"></label>
+          <label>Language <input id="c-language"></label>
+        </div>
+        <label>Extra rules <textarea id="c-rules" rows="3" placeholder="e.g. never mention prices; always use their first name if known; no emojis"></textarea></label>
+        <label>Example DM you like <textarea id="c-example" rows="4" placeholder="Paste one DM that got replies. Claude copies the style, not the words."></textarea></label>
+        <div class="actions"><button class="btn primary" id="save-campaign">Save</button><span class="saved muted"></span></div>
+      </div>
+    </section>
+
+    <!-- SEND -->
+    <section id="tab-send" class="tab">
+      <div class="send-grid">
+        <div class="card">
+          <h2>1 · Instagram window</h2>
+          <p class="muted" id="browser-help">Opens a separate browser window just for DM Pilot. Log in to Instagram there once; it stays logged in.</p>
+          <div class="actions">
+            <button class="btn primary" id="browser-open">Open Instagram window</button>
+            <button class="btn" id="browser-close">Close</button>
+          </div>
+        </div>
+
+        <div class="card">
+          <h2>2 · Mode</h2>
+          <div class="modes">
+            <label class="mode"><input type="radio" name="mode" value="assist" checked>
+              <div><strong>Assisted</strong><span>The app opens each chat and types the DM. You press <kbd>Enter</kbd> to send, and it moves to the next one. About 100 in 15 minutes. Low risk.</span></div></label>
+            <label class="mode"><input type="radio" name="mode" value="auto">
+              <div><strong>Automatic</strong><span>Sends on its own with random gaps, breaks, a daily cap and active hours. Stops at any Instagram warning. <b>Breaks Instagram's terms, so your account is at risk.</b></span></div></label>
+          </div>
+          <div class="actions">
+            <button class="btn primary" id="run-start">Start</button>
+            <button class="btn" id="run-stop">Stop</button>
+          </div>
+        </div>
+
+        <div class="card now">
+          <h2>Now</h2>
+          <div id="now-phase" class="phase">Idle</div>
+          <div id="now-detail" class="muted"></div>
+          <div id="now-lead" class="now-lead" hidden>
+            <a id="now-user" target="_blank" rel="noreferrer"></a>
+            <pre id="now-msg"></pre>
+          </div>
+          <div class="actions" id="now-actions">
+            <button class="btn" id="run-skip">Skip</button>
+            <button class="btn" id="run-mark">Mark as sent</button>
+          </div>
+          <div class="queue-line" id="queue-line"></div>
+        </div>
+
+        <div class="card log-card">
+          <h2>Activity</h2>
+          <ul id="log" class="log"></ul>
+        </div>
+      </div>
+    </section>
+
+    <!-- SETTINGS -->
+    <section id="tab-settings" class="tab">
+      <div class="card narrow">
+        <h2>Claude</h2>
+        <label>API key <input id="s-apiKey" type="password" placeholder="sk-ant-…" autocomplete="off"></label>
+        <p class="muted small" id="s-key-note"></p>
+        <label>Model
+          <select id="s-model">
+            <option value="claude-opus-5">Claude Opus 5 (best writing)</option>
+            <option value="claude-sonnet-5">Claude Sonnet 5 (cheaper)</option>
+            <option value="claude-haiku-4-5">Claude Haiku 4.5 (cheapest)</option>
+          </select></label>
+
+        <h2>Automatic mode limits</h2>
+        <p class="muted small">Instagram limits how many new conversations an account can start. Stay low, especially on newer accounts.</p>
+        <div class="row">
+          <label>Daily cap <input id="a-dailyCap" type="number" min="1"></label>
+          <label>Active from (hour) <input id="a-startHour" type="number" min="0" max="23"></label>
+          <label>Active until (hour) <input id="a-endHour" type="number" min="0" max="24"></label>
+        </div>
+        <div class="row">
+          <label>Min gap (sec) <input id="a-minDelaySec" type="number" min="30"></label>
+          <label>Max gap (sec) <input id="a-maxDelaySec" type="number" min="30"></label>
+        </div>
+        <div class="row">
+          <label>Break after ~N DMs <input id="a-breakEvery" type="number" min="1"></label>
+          <label>Break min (min) <input id="a-breakMinMin" type="number" min="1"></label>
+          <label>Break max (min) <input id="a-breakMaxMin" type="number" min="1"></label>
+        </div>
+        <p class="warn small" id="cap-warn" hidden>More than 50 new DMs a day is very likely to get your account restricted.</p>
+
+        <h2>Browser</h2>
+        <label>Browser for the Instagram window
+          <select id="s-channel">
+            <option value="msedge">Microsoft Edge</option>
+            <option value="chrome">Google Chrome</option>
+          </select></label>
+        <div class="actions"><button class="btn primary" id="save-settings">Save</button><span class="saved muted"></span></div>
+      </div>
+    </section>
+  </main>
+
+  <dialog id="paste-dialog">
+    <form method="dialog">
+      <h2>Paste leads</h2>
+      <p class="muted small">JSON, CSV, or one Instagram handle or link per line.</p>
+      <textarea id="paste-text" rows="12"></textarea>
+      <div class="actions"><button class="btn" value="cancel">Cancel</button><button class="btn primary" id="paste-go" value="ok">Import</button></div>
+    </form>
+  </dialog>
+
+  <div id="toast" class="toast" hidden></div>
+  <script src="app.js"></script>
+</body>
+</html>
