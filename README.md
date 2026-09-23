@@ -3,7 +3,7 @@
 Local Instagram DM outreach: import LeadOS leads → Claude writes a personalized DM per lead → send them in **Assisted** or **Automatic** mode.
 
 ## Start
-Double-click `Start DM Pilot.bat` (first run installs dependencies). The app opens at http://127.0.0.1:4777.
+Double-click **DM Pilot** on the desktop (or `Start DM Pilot.bat` in this folder). A black window opens (keep it open) and the app opens in your browser at http://127.0.0.1:4777. Launching it again while it runs just reopens the page.
 
 ## Flow
 1. **Settings**: paste your Claude API key.

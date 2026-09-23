@@ -148,10 +148,21 @@ app.post('/api/run/reset', handle(() => { if (!runner.state.running) Object.assi
 
 app.get('/api/logs', handle(() => db.recentLogs(150)));
 
-app.listen(PORT, '127.0.0.1', () => {
-  const url = `http://127.0.0.1:${PORT}`;
-  console.log(`DM Pilot running at ${url}`);
+const url = `http://127.0.0.1:${PORT}`;
+const openInBrowser = () => {
   if (process.argv.includes('--open')) exec(process.platform === 'win32' ? `start "" ${url}` : `open ${url}`);
+};
+
+const server = app.listen(PORT, '127.0.0.1', () => {
+  console.log(`\n  DM Pilot is running at ${url}\n  It should open in your browser now. Keep this window open while you use it.\n`);
+  openInBrowser();
+});
+server.on('error', (e) => {
+  if (e.code !== 'EADDRINUSE') throw e;
+  // Already running (e.g. launched twice): just bring up the existing one.
+  console.log(`\n  DM Pilot is already running. Opening ${url}\n`);
+  openInBrowser();
+  setTimeout(() => process.exit(3), 1500);
 });
 
 process.on('SIGINT', async () => { await ig.close(); process.exit(0); });
