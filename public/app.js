@@ -1,6 +1,7 @@
 const $ = (s) => document.querySelector(s);
 const $$ = (s) => [...document.querySelectorAll(s)];
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const icon = (id) => `<svg class="i"><use href="#i-${id}"/></svg>`;
 
 async function api(path, opts = {}) {
   const res = await fetch('/api' + path, {
@@ -19,67 +20,99 @@ function toast(text) {
   t.textContent = text;
   t.hidden = false;
   clearTimeout(toastTimer);
-  toastTimer = setTimeout(() => (t.hidden = true), 3500);
+  toastTimer = setTimeout(() => (t.hidden = true), 3800);
 }
 const guarded = (fn) => async (...a) => { try { await fn(...a); } catch (e) { toast(e.message); } };
 
-// ---------- tabs ----------
+function avatar(username, cls = '') {
+  let h = 0;
+  for (const c of username) h = (h * 31 + c.charCodeAt(0)) % 360;
+  const bg = `linear-gradient(135deg, hsl(${h} 78% 62%), hsl(${(h + 45) % 360} 80% 55%))`;
+  return `<span class="avatar ${cls}" style="background:${bg}">${esc(username[0]?.toUpperCase() || '?')}</span>`;
+}
+
+// ---------- navigation ----------
 let activeTab = 'leads';
-$$('.tabs button').forEach((b) => b.addEventListener('click', () => {
-  activeTab = b.dataset.tab;
-  $$('.tabs button').forEach((x) => x.classList.toggle('active', x === b));
-  $$('.tab').forEach((t) => t.classList.toggle('active', t.id === 'tab-' + activeTab));
-  if (activeTab === 'leads') loadLeads();
-  if (activeTab === 'send') loadLogs();
-}));
+function go(tab) {
+  activeTab = tab;
+  $$('.nav button').forEach((x) => x.classList.toggle('active', x.dataset.tab === tab));
+  $$('.page').forEach((p) => p.classList.toggle('active', p.id === 'tab-' + tab));
+  if (tab === 'leads') loadLeads();
+  if (tab === 'send') loadLogs();
+  window.scrollTo(0, 0);
+}
+$$('.nav button').forEach((b) => b.addEventListener('click', () => go(b.dataset.tab)));
 
 // ---------- leads ----------
 let leads = [];
+let filter = 'all';
 const selected = new Set();
 
 async function loadLeads() {
   leads = await api('/leads');
+  for (const id of [...selected]) if (!leads.some((l) => l.id === id)) selected.delete(id);
   renderLeads();
 }
 
+function visibleLeads() {
+  const q = $('#search').value.trim().toLowerCase();
+  return leads.filter((l) => (filter === 'all' || l.status === filter)
+    && (!q || l.username.toLowerCase().includes(q) || (l.name || '').toLowerCase().includes(q)));
+}
+
 function renderLeads() {
-  const f = $('#filter').value;
-  const rows = leads.filter((l) => f === 'all' || l.status === f);
+  const rows = visibleLeads();
   $('#empty').hidden = leads.length > 0;
+  $('.table-tools').hidden = leads.length === 0;
+  $('.table-scroll').hidden = leads.length === 0;
+  $('#nav-leads').textContent = leads.length;
   $('#lead-rows').innerHTML = rows.map((l) => {
     const d = l.data || {};
-    const sub = [d.category, [d.city, d.state].filter(Boolean).join(', '), d.followerCount && `${d.followerCount} followers`].filter(Boolean).join(' · ');
+    const meta = [d.category, [d.city, d.state].filter(Boolean).join(', '), d.followerCount && `${d.followerCount} followers`].filter(Boolean).join(' · ');
     const locked = l.status === 'sent';
     return `<tr data-id="${l.id}">
       <td><input type="checkbox" class="row-check" ${selected.has(l.id) ? 'checked' : ''}></td>
-      <td class="acct"><a href="https://www.instagram.com/${esc(l.username)}/" target="_blank" rel="noreferrer">@${esc(l.username)}</a>
-        <div>${esc(l.name)}</div><div class="sub">${esc(sub)}</div></td>
-      <td class="msg">${locked ? `<div style="white-space:pre-wrap;padding:4px 6px">${esc(l.message)}</div>`
-        : `<textarea rows="${Math.max(2, Math.ceil((l.message || '').length / 90))}" placeholder="No message yet. Write one or let Claude do it.">${esc(l.message)}</textarea>`}
+      <td><div class="acct">${avatar(l.username)}<div>
+        <a href="https://www.instagram.com/${esc(l.username)}/" target="_blank" rel="noreferrer">@${esc(l.username)}</a>
+        ${l.name ? `<div class="nm">${esc(l.name)}</div>` : ''}${meta ? `<div class="meta">${esc(meta)}</div>` : ''}</div></div></td>
+      <td class="msg">${locked ? `<div class="sent-text">${esc(l.message)}</div>`
+        : `<textarea rows="${Math.max(2, Math.ceil((l.message || '').length / 80))}" placeholder="No message yet. Type one, or let Claude write it.">${esc(l.message)}</textarea>`}
         ${l.error ? `<div class="err">${esc(l.error)}</div>` : ''}</td>
       <td><span class="pill ${l.status}">${l.status}</span>
         <div class="row-actions">${locked ? '' : '<button data-act="regen">Rewrite</button>'}
           ${['failed', 'skipped', 'sent'].includes(l.status) ? '<button data-act="requeue">Requeue</button>' : ''}</div></td>
     </tr>`;
-  }).join('');
+  }).join('') || (leads.length ? `<tr><td colspan="4" class="muted" style="text-align:center;padding:30px">No leads match.</td></tr>` : '');
   $('#check-all').checked = rows.length > 0 && rows.every((l) => selected.has(l.id));
   renderBulk();
 }
 
-function renderCounts(c) {
-  $('#counts').innerHTML = ['total', 'new', 'ready', 'sent', 'failed', 'skipped']
-    .map((k) => `<span>${k === 'total' ? 'Total' : k[0].toUpperCase() + k.slice(1)} <b>${c[k] || 0}</b></span>`).join('');
+const STATS = [
+  ['all', 'Total', 'total', 'var(--muted)'], ['new', 'New', 'new', 'var(--line-2)'], ['ready', 'Ready', 'ready', 'var(--violet)'],
+  ['sent', 'Sent', 'sent', 'var(--ok)'], ['failed', 'Failed', 'failed', 'var(--bad)'], ['skipped', 'Skipped', 'skipped', 'var(--warn)'],
+];
+function renderStats(c) {
+  $('#stats').innerHTML = STATS.map(([key, label, count, color]) =>
+    `<button class="stat ${filter === key ? 'active' : ''}" data-filter="${key}">
+      <div class="stat-label"><i style="background:${color}"></i>${label}</div>
+      <div class="stat-value">${c[count] || 0}</div></button>`).join('');
 }
+$('#stats').addEventListener('click', (e) => {
+  const b = e.target.closest('[data-filter]');
+  if (!b) return;
+  filter = filter === b.dataset.filter ? 'all' : b.dataset.filter;
+  if (lastState) renderStats(lastState.counts);
+  renderLeads();
+});
+$('#search').addEventListener('input', renderLeads);
 
 function renderBulk() {
   $('#bulk').hidden = selected.size === 0;
   $('#bulk-n').textContent = `${selected.size} selected`;
 }
 
-$('#filter').addEventListener('change', renderLeads);
 $('#check-all').addEventListener('change', (e) => {
-  const f = $('#filter').value;
-  leads.filter((l) => f === 'all' || l.status === f).forEach((l) => e.target.checked ? selected.add(l.id) : selected.delete(l.id));
+  visibleLeads().forEach((l) => (e.target.checked ? selected.add(l.id) : selected.delete(l.id)));
   renderLeads();
 });
 
@@ -92,6 +125,7 @@ $('#lead-rows').addEventListener('change', guarded(async (e) => {
     const updated = await api(`/leads/${id}`, { method: 'PATCH', body: { message: e.target.value } });
     Object.assign(leads.find((l) => l.id === id), updated);
     renderLeads();
+    refresh();
   }
 }));
 
@@ -99,30 +133,44 @@ $('#lead-rows').addEventListener('click', guarded(async (e) => {
   const act = e.target.dataset.act;
   if (!act) return;
   const id = Number(e.target.closest('tr').dataset.id);
-  if (act === 'regen') { await api('/generate', { body: { ids: [id] } }); toast('Rewriting…'); }
-  if (act === 'requeue') { await api('/leads/bulk', { body: { ids: [id], action: 'requeue' } }); await loadLeads(); }
+  if (act === 'regen') { await api('/generate', { body: { ids: [id] } }); toast('Rewriting…'); refresh(); }
+  if (act === 'requeue') { await api('/leads/bulk', { body: { ids: [id], action: 'requeue' } }); await loadLeads(); refresh(); }
 }));
 
 $$('[data-bulk]').forEach((b) => b.addEventListener('click', guarded(async () => {
   const ids = [...selected];
   const action = b.dataset.bulk;
-  if (action === 'generate') { await api('/generate', { body: { ids } }); toast(`Writing ${ids.length} DMs…`); return; }
-  if (action === 'delete' && !confirm(`Delete ${ids.length} leads?`)) return;
+  if (action === 'generate') { await api('/generate', { body: { ids } }); toast(`Writing ${ids.length} DMs…`); refresh(); return; }
+  if (action === 'delete' && !confirm(`Delete ${ids.length} lead${ids.length > 1 ? 's' : ''}?`)) return;
   await api('/leads/bulk', { body: { ids, action } });
   if (action === 'delete') selected.clear();
   await loadLeads();
+  refresh();
 })));
+
+$('#delete-all').addEventListener('click', guarded(async () => {
+  if (!leads.length) return toast('The list is already empty');
+  if (!confirm(`Delete all ${leads.length} leads? Their messages and send history are removed too.`)) return;
+  const r = await api('/leads/delete-all', { body: {} });
+  selected.clear();
+  toast(`Deleted ${r.deleted} leads`);
+  await loadLeads();
+  refresh();
+}));
 
 async function importText(text) {
   const r = await api('/import', { body: { text } });
-  toast(`Added ${r.added} leads${r.duplicates ? ` · ${r.duplicates} already in the list` : ''}${r.invalid ? ` · ${r.invalid} without an Instagram handle` : ''}`);
+  toast(`Added ${r.added} lead${r.added === 1 ? '' : 's'}${r.duplicates ? ` · ${r.duplicates} already in the list` : ''}${r.invalid ? ` · ${r.invalid} without an Instagram handle` : ''}`);
   await loadLeads();
+  refresh();
 }
-$('#file').addEventListener('change', guarded(async (e) => {
-  const file = e.target.files[0];
-  e.target.value = '';
-  if (file) await importText(await file.text());
-}));
+for (const input of ['#file', '#file2']) {
+  $(input).addEventListener('change', guarded(async (e) => {
+    const file = e.target.files[0];
+    e.target.value = '';
+    if (file) await importText(await file.text());
+  }));
+}
 $('#paste-open').addEventListener('click', () => { $('#paste-text').value = ''; $('#paste-dialog').showModal(); });
 $('#paste-go').addEventListener('click', guarded(async () => {
   const text = $('#paste-text').value;
@@ -131,39 +179,64 @@ $('#paste-go').addEventListener('click', guarded(async () => {
 
 $('#gen-btn').addEventListener('click', guarded(async () => {
   await api('/generate', { body: {} });
-  toast('Writing DMs for all new leads…');
+  toast('Claude is writing DMs for all new leads…');
+  refresh();
 }));
 
+// ---------- setup checklist ----------
+function renderSetup(st) {
+  const c = st.counts;
+  const steps = [
+    { done: st.setup.hasApiKey, title: 'Add Claude key', text: 'Settings → API key', act: () => go('settings') },
+    { done: st.setup.hasOffer, title: 'Describe your offer', text: 'So Claude knows what to pitch', act: () => go('campaign') },
+    { done: c.total > 0, title: 'Import leads', text: 'Your LeadOS .json export', act: () => $('#file').click() },
+    { done: (c.ready || 0) + (c.sent || 0) > 0, title: 'Write the DMs', text: 'Then review and edit them', act: () => $('#gen-btn').click() },
+    { done: st.browser.loggedIn, title: 'Log in to Instagram', text: 'Once, in the Chrome window', act: () => go('send') },
+  ];
+  const done = steps.filter((s) => s.done).length;
+  $('#setup').hidden = done === steps.length;
+  $('#setup-progress').textContent = `${done} of ${steps.length} done`;
+  const current = steps.findIndex((s) => !s.done);
+  $('#steps').innerHTML = steps.map((s, i) => `<li class="step ${s.done ? 'done' : ''} ${i === current ? 'current' : ''}" data-step="${i}">
+    <span class="step-num">${s.done ? icon('check') : i + 1}</span><div><strong>${s.title}</strong><span>${s.text}</span></div></li>`).join('');
+  setupActions = steps.map((s) => s.act);
+}
+let setupActions = [];
+$('#steps').addEventListener('click', (e) => {
+  const li = e.target.closest('[data-step]');
+  if (li) setupActions[Number(li.dataset.step)]?.();
+});
+
 // ---------- settings + campaign ----------
-let settings;
 const campaignFields = ['senderName', 'offer', 'tone', 'maxWords', 'language', 'rules', 'example'];
 const autoFields = ['dailyCap', 'startHour', 'endHour', 'minDelaySec', 'maxDelaySec', 'breakEvery', 'breakMinMin', 'breakMaxMin'];
 
 async function loadSettings() {
-  settings = await api('/settings');
+  const settings = await api('/settings');
   campaignFields.forEach((k) => ($('#c-' + k).value = settings.campaign[k] ?? ''));
   autoFields.forEach((k) => ($('#a-' + k).value = settings.auto[k]));
   $('#s-model').value = settings.model;
   $('#s-channel').value = settings.browser.channel;
   $('#s-apiKey').value = '';
-  $('#s-key-note').textContent = settings.hasApiKey ? 'A key is saved. Leave blank to keep it.' : 'Get one at console.anthropic.com. It is stored only on this computer.';
+  $('#s-apiKey').placeholder = settings.hasApiKey ? '•••••••••••• (saved)' : 'sk-ant-…';
+  $('#s-key-note').textContent = settings.hasApiKey ? 'A key is saved. Leave this blank to keep it.' : 'Create one at console.anthropic.com → API keys.';
   $('#cap-warn').hidden = settings.auto.dailyCap <= 50;
 }
 
-function flashSaved(btn) {
-  const s = btn.parentElement.querySelector('.saved');
-  s.textContent = 'Saved';
-  setTimeout(() => (s.textContent = ''), 2000);
+function flashSaved(sel) {
+  $(sel).textContent = '✓ Saved';
+  setTimeout(() => ($(sel).textContent = ''), 2200);
 }
 
-$('#save-campaign').addEventListener('click', guarded(async (e) => {
+$('#save-campaign').addEventListener('click', guarded(async () => {
   const campaign = Object.fromEntries(campaignFields.map((k) => [k, k === 'maxWords' ? Number($('#c-' + k).value) || 60 : $('#c-' + k).value]));
   await api('/settings', { method: 'PUT', body: { campaign } });
   await loadSettings();
-  flashSaved(e.target);
+  flashSaved('#campaign-saved');
+  refresh();
 }));
 
-$('#save-settings').addEventListener('click', guarded(async (e) => {
+$('#save-settings').addEventListener('click', guarded(async () => {
   const auto = Object.fromEntries(autoFields.map((k) => [k, Number($('#a-' + k).value)]));
   if (auto.minDelaySec > auto.maxDelaySec) throw new Error('Min gap must be less than max gap');
   if (auto.breakMinMin > auto.breakMaxMin) throw new Error('Break min must be less than break max');
@@ -171,20 +244,22 @@ $('#save-settings').addEventListener('click', guarded(async (e) => {
     apiKey: $('#s-apiKey').value.trim(), model: $('#s-model').value, auto, browser: { channel: $('#s-channel').value },
   } });
   await loadSettings();
-  flashSaved(e.target);
+  flashSaved('#settings-saved');
+  refresh();
 }));
 $('#a-dailyCap').addEventListener('input', (e) => ($('#cap-warn').hidden = Number(e.target.value) <= 50));
 
 // ---------- sending ----------
 const PHASES = {
-  idle: 'Idle', starting: 'Starting', opening: 'Opening chat', typing: 'Typing', waiting_user: 'Your turn: press Enter',
-  sending: 'Sending', waiting: 'Waiting', break: 'On a break', sleeping: 'Outside active hours', cap: 'Daily cap reached',
+  idle: 'Ready when you are', starting: 'Starting…', opening: 'Opening chat', typing: 'Typing the DM', waiting_user: 'Your turn: press Enter',
+  sending: 'Sending', waiting: 'Waiting before the next DM', break: 'On a break', sleeping: 'Outside active hours', cap: 'Daily cap reached',
   paused: 'Paused', done: 'All done',
 };
 
 $('#browser-open').addEventListener('click', guarded(async (e) => {
-  e.target.disabled = true;
-  try { await api('/browser/open', { body: {} }); } finally { e.target.disabled = false; }
+  const b = e.currentTarget;
+  b.disabled = true;
+  try { await api('/browser/open', { body: {} }); } finally { b.disabled = false; }
   refresh();
 }));
 $('#browser-close').addEventListener('click', guarded(async () => { await api('/browser/close', { body: {} }); refresh(); }));
@@ -201,43 +276,62 @@ $('#run-mark').addEventListener('click', guarded(() => api('/run/mark-sent', { b
 function fmtLeft(ms) {
   const s = Math.max(0, Math.round(ms / 1000));
   const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60);
-  return h ? `${h}h ${m}m` : `${m}:${String(s % 60).padStart(2, '0')}`;
+  return h ? `${h}h ${String(m).padStart(2, '0')}m` : `${m}:${String(s % 60).padStart(2, '0')}`;
 }
 
 let lastState;
 function renderState(st) {
   lastState = st;
   const b = st.browser;
-  $('#sb-browser').innerHTML = `<i class="dot ${b.open ? (b.loggedIn ? 'on' : 'half') : ''}"></i><span>${b.open ? (b.loggedIn ? 'Instagram logged in' : 'Log in to Instagram') : 'Browser closed'}</span>`;
-  $('#sb-today').textContent = `${st.sentToday} / ${st.dailyCap} sent today`;
-  renderCounts(st.counts);
+  $('#ig-dot').className = 'dot ' + (b.open ? (b.loggedIn ? 'on' : 'half') : '');
+  $('#ig-label').textContent = b.open ? (b.loggedIn ? 'Instagram connected' : 'Log in to Instagram') : 'Instagram window closed';
+  $('#today-label').textContent = `${st.sentToday} / ${st.dailyCap}`;
+  $('#today-bar').style.width = Math.min(100, (st.sentToday / Math.max(1, st.dailyCap)) * 100) + '%';
+  renderStats(st.counts);
+  renderSetup(st);
 
   const g = st.gen;
-  $('#gen-status').textContent = g.running ? `Writing ${g.done}/${g.total}…` : g.failed ? `${g.failed} failed: ${g.lastError}` : '';
+  const gs = $('#gen-status');
+  gs.hidden = !g.running && !g.failed;
+  gs.className = 'gen-status' + (!g.running && g.failed ? ' bad' : '');
+  gs.innerHTML = g.running ? `<span class="spinner"></span>Writing ${g.done} / ${g.total}` : g.failed ? `${g.failed} failed · ${esc(g.lastError)}` : '';
   $('#gen-btn').disabled = g.running;
 
   const r = st.runner;
+  $('#nav-live').hidden = !r.running;
   $('#now-phase').textContent = PHASES[r.phase] || r.phase;
-  $('#now-phase').className = 'phase ' + r.phase;
-  let detail = r.detail || '';
-  if (r.nextAt) detail += ` · ${fmtLeft(r.nextAt - Date.now())}`;
-  $('#now-detail').textContent = detail;
+  $('#now-detail').textContent = r.detail || '';
+  $('#pulse').className = 'pulse ' + (r.phase === 'paused' ? 'bad' : r.phase === 'done' ? 'ok' : r.phase === 'waiting_user' ? 'you' : r.running ? 'on' : '');
+  $('#countdown').hidden = !r.nextAt;
+  if (r.nextAt) $('#countdown').textContent = fmtLeft(r.nextAt - Date.now());
+
   $('#now-lead').hidden = !r.lead;
+  $('#idle-art').hidden = !!r.lead;
   if (r.lead) {
-    $('#now-user').textContent = '@' + r.lead.username + (r.lead.name ? ` · ${r.lead.name}` : '');
+    $('#now-avatar').outerHTML = avatar(r.lead.username, 'lg').replace('class="avatar', 'id="now-avatar" class="avatar');
+    $('#now-user').textContent = '@' + r.lead.username;
     $('#now-user').href = `https://www.instagram.com/${r.lead.username}/`;
+    $('#now-name').textContent = r.lead.name || '';
     $('#now-msg').textContent = r.lead.message;
+  } else {
+    $('#idle-text').textContent = !b.open ? 'Click “Open Instagram in Chrome” above to get started.'
+      : !b.loggedIn ? 'Log in to Instagram in the Chrome window that just opened. You only need to do this once.'
+      : !st.counts.ready ? 'No DMs are ready. Write some on the Leads page first.'
+      : r.phase === 'paused' ? 'Check the Instagram window, then press Start to continue.'
+      : `${st.counts.ready} DMs ready. Choose a mode and press Start.`;
   }
-  $('#now-actions').hidden = !r.running;
-  $('#run-mark').hidden = r.mode !== 'assist' || r.phase !== 'waiting_user';
-  $('#run-skip').textContent = r.mode === 'auto' && r.nextAt ? 'Skip wait' : 'Skip';
-  $('#run-start').disabled = r.running || !b.open;
-  $('#run-stop').disabled = !r.running;
+
+  $('#run-start').hidden = r.running;
+  $('#run-start').disabled = !b.open || !b.loggedIn;
+  $('#run-stop').hidden = !r.running;
+  $('#run-skip').hidden = !r.running;
+  $('#run-skip').querySelector('span').textContent = r.mode === 'auto' && r.nextAt ? 'Skip wait' : 'Skip lead';
+  $('#run-mark').hidden = !(r.running && r.mode === 'assist' && r.phase === 'waiting_user');
   $$('input[name="mode"]').forEach((i) => (i.disabled = r.running));
-  $('#queue-line').textContent = `${st.counts.ready || 0} ready in queue`;
-  $('#browser-help').textContent = b.open && !b.loggedIn
-    ? 'Log in to Instagram in the window that opened. You only need to do this once.'
-    : 'Opens a separate browser window just for DM Pilot. Log in to Instagram there once; it stays logged in.';
+  if (r.running && r.mode) $(`input[name="mode"][value="${r.mode}"]`).checked = true;
+  $('#queue-line').textContent = `${st.counts.ready || 0} in queue · ${st.sentToday} sent today`;
+  $('#browser-open').querySelector('span').textContent = b.open ? 'Show Instagram window' : 'Open Instagram in Chrome';
+  $('#browser-close').hidden = !b.open;
 }
 
 let genWasRunning = false;
@@ -254,10 +348,11 @@ async function refresh() {
 
 async function loadLogs() {
   const logs = await api('/logs');
-  $('#log').innerHTML = logs.map((l) => `<li><time>${new Date(l.ts).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</time><span class="${l.level}">${esc(l.text)}</span></li>`).join('');
+  $('#log').innerHTML = logs.length ? logs.map((l) => `<li class="${l.level}"><span class="ldot"></span><span>${esc(l.text)}</span>
+    <time>${new Date(l.ts).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</time></li>`).join('')
+    : '<li><span></span><span class="empty-log">Nothing yet.</span></li>';
 }
 
-// Countdown ticks between polls.
 setInterval(() => { if (lastState?.runner.nextAt) renderState(lastState); }, 1000);
 setInterval(refresh, 2000);
 

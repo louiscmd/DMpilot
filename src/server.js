@@ -27,14 +27,19 @@ const handle = (fn) => async (req, res) => {
   catch (e) { res.status(400).json({ error: e.message }); }
 };
 
-app.get('/api/state', handle(async () => ({
+app.get('/api/state', handle(async () => {
+  const s = db.getSettings();
+  return {
+  setup: { hasApiKey: !!(s.apiKey || process.env.ANTHROPIC_API_KEY), hasOffer: !!s.campaign.offer.trim() },
   browser: { open: ig.isOpen, loggedIn: await ig.loggedIn() },
   runner: runner.state,
   gen,
   counts: db.counts(),
   sentToday: db.sentToday(),
-  dailyCap: db.getSettings().auto.dailyCap,
-})));
+  dailyCap: s.auto.dailyCap,
+  mode: runner.state.mode,
+  };
+}));
 
 // ---- leads ----
 app.get('/api/leads', handle(() => db.listLeads()));
@@ -76,6 +81,13 @@ app.post('/api/leads/bulk', handle((req) => {
     else if (action === 'requeue') db.updateLead(id, { status: lead.message ? 'ready' : 'new', error: null, sent_at: null });
     else if (action === 'clear') db.updateLead(id, { message: '', status: lead.status === 'sent' ? 'sent' : 'new' });
   }
+}));
+
+app.post('/api/leads/delete-all', handle(() => {
+  if (runner.state.running) throw new Error('Stop sending before deleting leads');
+  const n = db.deleteAllLeads();
+  db.log('info', `Deleted all ${n} leads`);
+  return { deleted: n };
 }));
 
 // ---- message writing ----

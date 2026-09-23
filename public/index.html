@@ -4,183 +4,271 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>DM Pilot</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
-  <header class="top">
-    <div class="brand">DM Pilot</div>
-    <nav class="tabs">
-      <button data-tab="leads" class="active">Leads</button>
-      <button data-tab="campaign">Campaign</button>
-      <button data-tab="send">Send</button>
-      <button data-tab="settings">Settings</button>
-    </nav>
-    <div class="status-bar">
-      <span id="sb-browser" class="dot-label"><i class="dot"></i><span>Browser closed</span></span>
-      <span id="sb-today">0 / 25 sent today</span>
-    </div>
-  </header>
+  <svg width="0" height="0" style="position:absolute" aria-hidden="true">
+    <defs>
+      <linearGradient id="g-brand" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#8b5cf6"/><stop offset=".55" stop-color="#ec4899"/><stop offset="1" stop-color="#f59e0b"/></linearGradient>
+    </defs>
+    <symbol id="i-users" viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></symbol>
+    <symbol id="i-pen" viewBox="0 0 24 24"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></symbol>
+    <symbol id="i-send" viewBox="0 0 24 24"><path d="m22 2-7 20-4-9-9-4Z"/><path d="M22 2 11 13"/></symbol>
+    <symbol id="i-sliders" viewBox="0 0 24 24"><path d="M4 21v-7M4 10V3M12 21v-9M12 8V3M20 21v-5M20 12V3M1 14h6M9 8h6M17 16h6"/></symbol>
+    <symbol id="i-upload" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m17 8-5-5-5 5"/><path d="M12 3v12"/></symbol>
+    <symbol id="i-paste" viewBox="0 0 24 24"><rect x="8" y="2" width="8" height="4" rx="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/></symbol>
+    <symbol id="i-spark" viewBox="0 0 24 24"><path d="M12 3l1.9 5.1L19 10l-5.1 1.9L12 17l-1.9-5.1L5 10l5.1-1.9z"/><path d="M19 17l.7 1.8 1.8.7-1.8.7-.7 1.8-.7-1.8-1.8-.7 1.8-.7z"/></symbol>
+    <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></symbol>
+    <symbol id="i-check" viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></symbol>
+    <symbol id="i-play" viewBox="0 0 24 24"><path d="M6 4l14 8-14 8z"/></symbol>
+    <symbol id="i-stop" viewBox="0 0 24 24"><rect x="5" y="5" width="14" height="14" rx="2"/></symbol>
+    <symbol id="i-skip" viewBox="0 0 24 24"><path d="M5 4l10 8-10 8z"/><path d="M19 5v14"/></symbol>
+    <symbol id="i-window" viewBox="0 0 24 24"><rect x="2" y="4" width="20" height="16" rx="3"/><path d="M2 9h20"/><path d="M6 6.5h.01M9 6.5h.01"/></symbol>
+    <symbol id="i-hand" viewBox="0 0 24 24"><path d="M18 11V6a2 2 0 0 0-4 0v0M14 10V4a2 2 0 0 0-4 0v2M10 10.5V6a2 2 0 0 0-4 0v8"/><path d="M18 8a2 2 0 1 1 4 0v6a8 8 0 0 1-8 8h-2c-2.8 0-4.5-.86-5.99-2.34l-3.6-3.6a2 2 0 0 1 2.83-2.82L7 15"/></symbol>
+    <symbol id="i-bolt" viewBox="0 0 24 24"><path d="M13 2 3 14h9l-1 8 10-12h-9z"/></symbol>
+    <symbol id="i-trash" viewBox="0 0 24 24"><path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6"/></symbol>
+    <symbol id="i-shield" viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></symbol>
+  </svg>
 
-  <main>
-    <!-- LEADS -->
-    <section id="tab-leads" class="tab active">
-      <div class="toolbar">
-        <label class="btn primary">Import file<input id="file" type="file" accept=".json,.csv,.txt" hidden></label>
-        <button class="btn" id="paste-open">Paste leads</button>
-        <span class="sep"></span>
-        <button class="btn" id="gen-btn">Write DMs with Claude</button>
-        <span id="gen-status" class="muted"></span>
-        <span class="grow"></span>
-        <select id="filter">
-          <option value="all">All</option>
-          <option value="new">New</option>
-          <option value="ready">Ready</option>
-          <option value="sent">Sent</option>
-          <option value="failed">Failed</option>
-          <option value="skipped">Skipped</option>
-        </select>
+  <div class="app">
+    <aside class="side">
+      <div class="logo">
+        <span class="logo-mark"><svg class="i"><use href="#i-send"/></svg></span>
+        <span>DM Pilot</span>
       </div>
-      <div class="counts" id="counts"></div>
-      <div class="bulk" id="bulk" hidden>
-        <span id="bulk-n"></span>
-        <button class="btn sm" data-bulk="generate">Write DMs</button>
-        <button class="btn sm" data-bulk="requeue">Back to queue</button>
-        <button class="btn sm" data-bulk="skip">Skip</button>
-        <button class="btn sm" data-bulk="clear">Clear message</button>
-        <button class="btn sm danger" data-bulk="delete">Delete</button>
-      </div>
-      <div class="table-wrap">
-        <table class="leads">
-          <thead><tr>
-            <th class="c-check"><input type="checkbox" id="check-all"></th>
-            <th>Account</th>
-            <th>Message</th>
-            <th class="c-status">Status</th>
-          </tr></thead>
-          <tbody id="lead-rows"></tbody>
-        </table>
-        <div id="empty" class="empty">
-          <p><strong>No leads yet.</strong></p>
-          <p class="muted">Import a LeadOS export (JSON) or a CSV with an Instagram column, or paste handles/links one per line.</p>
+      <nav class="nav">
+        <button data-tab="leads" class="active"><svg class="i"><use href="#i-users"/></svg>Leads<span class="nav-count" id="nav-leads">0</span></button>
+        <button data-tab="campaign"><svg class="i"><use href="#i-pen"/></svg>Campaign</button>
+        <button data-tab="send"><svg class="i"><use href="#i-send"/></svg>Send<span class="live-dot" id="nav-live" hidden></span></button>
+        <button data-tab="settings"><svg class="i"><use href="#i-sliders"/></svg>Settings</button>
+      </nav>
+      <div class="side-foot">
+        <div class="mini-card">
+          <div class="mini-row"><span class="dot" id="ig-dot"></span><span id="ig-label">Instagram window closed</span></div>
+          <div class="mini-row between"><span class="muted">Sent today</span><strong id="today-label">0 / 25</strong></div>
+          <div class="bar"><span id="today-bar"></span></div>
         </div>
       </div>
-    </section>
+    </aside>
 
-    <!-- CAMPAIGN -->
-    <section id="tab-campaign" class="tab">
-      <div class="card narrow">
-        <h2>How Claude should write your DMs</h2>
-        <p class="muted">Each lead gets its own message based on its LeadOS research. These settings apply to all of them.</p>
-        <label>Your name / brand <input id="c-senderName" placeholder="e.g. Louis, video editor for restaurants"></label>
-        <label>What you offer <span class="req">required</span>
-          <textarea id="c-offer" rows="4" placeholder="Who you are, what you do for clients, the result you get them, and what you want from this first DM (e.g. a reply, a quick call)."></textarea></label>
-        <label>Tone <input id="c-tone"></label>
-        <div class="row">
-          <label>Max words <input id="c-maxWords" type="number" min="15" max="200"></label>
-          <label>Language <input id="c-language"></label>
+    <main class="main">
+      <!-- LEADS -->
+      <section id="tab-leads" class="page active">
+        <header class="page-head">
+          <div>
+            <h1>Leads</h1>
+            <p class="sub">Import prospects from LeadOS, let Claude write each DM, and review before sending.</p>
+          </div>
+          <div class="head-actions">
+            <button class="btn ghost" id="paste-open"><svg class="i"><use href="#i-paste"/></svg>Paste</button>
+            <label class="btn"><svg class="i"><use href="#i-upload"/></svg>Import file<input id="file" type="file" accept=".json,.csv,.txt" hidden></label>
+            <button class="btn brand" id="gen-btn"><svg class="i"><use href="#i-spark"/></svg><span>Write DMs with Claude</span></button>
+          </div>
+        </header>
+
+        <div class="setup card" id="setup">
+          <div class="setup-head">
+            <strong>Get set up</strong><span class="muted" id="setup-progress"></span>
+          </div>
+          <ol class="steps" id="steps"></ol>
         </div>
-        <label>Extra rules <textarea id="c-rules" rows="3" placeholder="e.g. never mention prices; always use their first name if known; no emojis"></textarea></label>
-        <label>Example DM you like <textarea id="c-example" rows="4" placeholder="Paste one DM that got replies. Claude copies the style, not the words."></textarea></label>
-        <div class="actions"><button class="btn primary" id="save-campaign">Save</button><span class="saved muted"></span></div>
-      </div>
-    </section>
 
-    <!-- SEND -->
-    <section id="tab-send" class="tab">
-      <div class="send-grid">
-        <div class="card">
-          <h2>1 · Instagram window</h2>
-          <p class="muted" id="browser-help">Opens a separate browser window just for DM Pilot. Log in to Instagram there once; it stays logged in.</p>
-          <div class="actions">
-            <button class="btn primary" id="browser-open">Open Instagram window</button>
-            <button class="btn" id="browser-close">Close</button>
+        <div class="stats" id="stats"></div>
+
+        <div class="card table-card">
+          <div class="table-tools">
+            <div class="search"><svg class="i"><use href="#i-search"/></svg><input id="search" placeholder="Search accounts…"></div>
+            <div class="bulk" id="bulk" hidden>
+              <span id="bulk-n" class="bulk-n"></span>
+              <button class="chip-btn" data-bulk="generate">Write DMs</button>
+              <button class="chip-btn" data-bulk="requeue">Back to queue</button>
+              <button class="chip-btn" data-bulk="skip">Skip</button>
+              <button class="chip-btn" data-bulk="clear">Clear message</button>
+              <button class="chip-btn danger" data-bulk="delete">Delete</button>
+            </div>
+            <span class="grow"></span>
+            <span id="gen-status" class="gen-status" hidden></span>
+            <button class="icon-btn danger" id="delete-all" title="Delete all leads"><svg class="i"><use href="#i-trash"/></svg></button>
+          </div>
+          <div class="table-scroll">
+            <table class="leads">
+              <thead><tr>
+                <th class="c-check"><input type="checkbox" id="check-all"></th>
+                <th class="c-acct">Account</th>
+                <th>Message</th>
+                <th class="c-status">Status</th>
+              </tr></thead>
+              <tbody id="lead-rows"></tbody>
+            </table>
+          </div>
+          <div id="empty" class="empty">
+            <div class="empty-art"><svg class="i"><use href="#i-users"/></svg></div>
+            <h3>No leads yet</h3>
+            <p class="muted">Import a LeadOS export (.json), a CSV with an Instagram column, or paste handles and links.</p>
+            <label class="btn brand"><svg class="i"><use href="#i-upload"/></svg>Import file<input id="file2" type="file" accept=".json,.csv,.txt" hidden></label>
           </div>
         </div>
+      </section>
 
-        <div class="card">
-          <h2>2 · Mode</h2>
-          <div class="modes">
-            <label class="mode"><input type="radio" name="mode" value="assist" checked>
-              <div><strong>Assisted</strong><span>The app opens each chat and types the DM. You press <kbd>Enter</kbd> to send, and it moves to the next one. About 100 in 15 minutes. Low risk.</span></div></label>
-            <label class="mode"><input type="radio" name="mode" value="auto">
-              <div><strong>Automatic</strong><span>Sends on its own with random gaps, breaks, a daily cap and active hours. Stops at any Instagram warning. <b>Breaks Instagram's terms, so your account is at risk.</b></span></div></label>
+      <!-- CAMPAIGN -->
+      <section id="tab-campaign" class="page">
+        <header class="page-head">
+          <div>
+            <h1>Campaign</h1>
+            <p class="sub">Tell Claude who you are and how you talk. Every lead still gets its own message, based on its LeadOS research.</p>
           </div>
-          <div class="actions">
-            <button class="btn primary" id="run-start">Start</button>
-            <button class="btn" id="run-stop">Stop</button>
+        </header>
+        <div class="form-grid">
+          <div class="card form">
+            <div class="field"><label for="c-senderName">Your name or brand</label><input id="c-senderName" placeholder="e.g. Louis, short-form video for restaurants"></div>
+            <div class="field"><label for="c-offer">What you offer <span class="tag">Required</span></label>
+              <textarea id="c-offer" rows="5" placeholder="What you do for clients, the result you get them, and what you want from this first DM (a reply, a quick call…)."></textarea></div>
+            <div class="field"><label for="c-tone">Tone</label><input id="c-tone"></div>
+            <div class="field-row">
+              <div class="field"><label for="c-maxWords">Max words</label><input id="c-maxWords" type="number" min="15" max="200"></div>
+              <div class="field"><label for="c-language">Language</label><input id="c-language"></div>
+            </div>
+            <div class="field"><label for="c-rules">Extra rules</label><textarea id="c-rules" rows="3" placeholder="e.g. no emojis · never mention prices · use their first name if known"></textarea></div>
+            <div class="field"><label for="c-example">An example DM you like</label><textarea id="c-example" rows="4" placeholder="Paste a DM that got replies. Claude copies the style, not the words."></textarea></div>
+            <div class="form-foot"><span class="saved" id="campaign-saved"></span><button class="btn brand" id="save-campaign">Save campaign</button></div>
+          </div>
+          <aside class="card tips">
+            <h3>What makes a DM get replies</h3>
+            <ul>
+              <li>One specific thing about <em>their</em> account in the first line.</li>
+              <li>Short. It should read like a text, not an email.</li>
+              <li>One clear, low-effort question at the end.</li>
+              <li>No links in the first message.</li>
+            </ul>
+            <p class="muted small">Claude already follows these rules. Use <b>Extra rules</b> for anything specific to you.</p>
+          </aside>
+        </div>
+      </section>
+
+      <!-- SEND -->
+      <section id="tab-send" class="page">
+        <header class="page-head">
+          <div>
+            <h1>Send</h1>
+            <p class="sub">DMs go out from a separate Chrome window that stays logged in to your Instagram.</p>
+          </div>
+          <div class="head-actions">
+            <button class="btn ghost" id="browser-close">Close window</button>
+            <button class="btn" id="browser-open"><svg class="i"><use href="#i-window"/></svg><span>Open Instagram in Chrome</span></button>
+          </div>
+        </header>
+
+        <div class="modes">
+          <label class="mode">
+            <input type="radio" name="mode" value="assist" checked>
+            <span class="mode-icon"><svg class="i"><use href="#i-hand"/></svg></span>
+            <span class="mode-body"><strong>Assisted</strong><span>The app opens each chat and types the DM. You press <kbd>Enter</kbd> and it moves on. About 100 DMs in 15 minutes.</span></span>
+            <span class="mode-tag safe">Low risk</span>
+          </label>
+          <label class="mode">
+            <input type="radio" name="mode" value="auto">
+            <span class="mode-icon"><svg class="i"><use href="#i-bolt"/></svg></span>
+            <span class="mode-body"><strong>Automatic</strong><span>Sends on its own with random gaps, breaks, a daily cap and active hours. Pauses at any Instagram warning.</span></span>
+            <span class="mode-tag risk">Account risk</span>
+          </label>
+        </div>
+
+        <div class="send-grid">
+          <div class="card live">
+            <div class="live-head">
+              <div class="phase-wrap"><span class="pulse" id="pulse"></span><div><div class="phase" id="now-phase">Idle</div><div class="muted small" id="now-detail"></div></div></div>
+              <div class="countdown" id="countdown" hidden></div>
+            </div>
+
+            <div class="thread" id="now-lead" hidden>
+              <div class="thread-head">
+                <span class="avatar lg" id="now-avatar"></span>
+                <div><a id="now-user" target="_blank" rel="noreferrer"></a><div class="muted small" id="now-name"></div></div>
+              </div>
+              <div class="bubble" id="now-msg"></div>
+            </div>
+            <div class="idle-art" id="idle-art">
+              <p class="muted" id="idle-text">Open the Instagram window, choose a mode, then press Start.</p>
+            </div>
+
+            <div class="live-foot">
+              <span class="muted small" id="queue-line"></span>
+              <span class="grow"></span>
+              <button class="btn ghost" id="run-skip" hidden><svg class="i"><use href="#i-skip"/></svg><span>Skip</span></button>
+              <button class="btn ghost" id="run-mark" hidden><svg class="i"><use href="#i-check"/></svg>Mark as sent</button>
+              <button class="btn" id="run-stop" hidden><svg class="i"><use href="#i-stop"/></svg>Stop</button>
+              <button class="btn brand" id="run-start"><svg class="i"><use href="#i-play"/></svg>Start</button>
+            </div>
+          </div>
+
+          <div class="card activity">
+            <h3>Activity</h3>
+            <ul id="log" class="log"></ul>
           </div>
         </div>
+      </section>
 
-        <div class="card now">
-          <h2>Now</h2>
-          <div id="now-phase" class="phase">Idle</div>
-          <div id="now-detail" class="muted"></div>
-          <div id="now-lead" class="now-lead" hidden>
-            <a id="now-user" target="_blank" rel="noreferrer"></a>
-            <pre id="now-msg"></pre>
+      <!-- SETTINGS -->
+      <section id="tab-settings" class="page">
+        <header class="page-head">
+          <div><h1>Settings</h1><p class="sub">Everything is stored only on this computer.</p></div>
+        </header>
+        <div class="settings">
+          <div class="card form">
+            <h3>Claude</h3>
+            <div class="field"><label for="s-apiKey">API key</label><input id="s-apiKey" type="password" placeholder="sk-ant-…" autocomplete="off"><p class="hint" id="s-key-note"></p></div>
+            <div class="field"><label for="s-model">Model</label>
+              <select id="s-model">
+                <option value="claude-opus-5">Claude Opus 5 · best writing</option>
+                <option value="claude-sonnet-5">Claude Sonnet 5 · cheaper</option>
+                <option value="claude-haiku-4-5">Claude Haiku 4.5 · cheapest</option>
+              </select></div>
           </div>
-          <div class="actions" id="now-actions">
-            <button class="btn" id="run-skip">Skip</button>
-            <button class="btn" id="run-mark">Mark as sent</button>
+
+          <div class="card form">
+            <h3>Automatic mode limits</h3>
+            <p class="hint">Instagram limits how many new conversations an account can start. Keep these low, especially on a newer account.</p>
+            <div class="field-row">
+              <div class="field"><label for="a-dailyCap">DMs per day</label><input id="a-dailyCap" type="number" min="1"></div>
+              <div class="field"><label for="a-startHour">Active from</label><input id="a-startHour" type="number" min="0" max="23"></div>
+              <div class="field"><label for="a-endHour">Active until</label><input id="a-endHour" type="number" min="0" max="24"></div>
+            </div>
+            <div class="field-row">
+              <div class="field"><label for="a-minDelaySec">Min gap (sec)</label><input id="a-minDelaySec" type="number" min="30"></div>
+              <div class="field"><label for="a-maxDelaySec">Max gap (sec)</label><input id="a-maxDelaySec" type="number" min="30"></div>
+            </div>
+            <div class="field-row">
+              <div class="field"><label for="a-breakEvery">Break every ~N DMs</label><input id="a-breakEvery" type="number" min="1"></div>
+              <div class="field"><label for="a-breakMinMin">Break min (min)</label><input id="a-breakMinMin" type="number" min="1"></div>
+              <div class="field"><label for="a-breakMaxMin">Break max (min)</label><input id="a-breakMaxMin" type="number" min="1"></div>
+            </div>
+            <p class="alert" id="cap-warn" hidden><svg class="i"><use href="#i-shield"/></svg>More than 50 new DMs a day is very likely to get the account restricted.</p>
           </div>
-          <div class="queue-line" id="queue-line"></div>
-        </div>
 
-        <div class="card log-card">
-          <h2>Activity</h2>
-          <ul id="log" class="log"></ul>
+          <div class="card form">
+            <h3>Browser</h3>
+            <div class="field"><label for="s-channel">Open Instagram in</label>
+              <select id="s-channel">
+                <option value="chrome">Google Chrome</option>
+                <option value="msedge">Microsoft Edge</option>
+              </select>
+              <p class="hint">A separate window with its own login. Your normal Chrome profile isn't touched.</p></div>
+          </div>
+          <div class="form-foot"><span class="saved" id="settings-saved"></span><button class="btn brand" id="save-settings">Save settings</button></div>
         </div>
-      </div>
-    </section>
-
-    <!-- SETTINGS -->
-    <section id="tab-settings" class="tab">
-      <div class="card narrow">
-        <h2>Claude</h2>
-        <label>API key <input id="s-apiKey" type="password" placeholder="sk-ant-…" autocomplete="off"></label>
-        <p class="muted small" id="s-key-note"></p>
-        <label>Model
-          <select id="s-model">
-            <option value="claude-opus-5">Claude Opus 5 (best writing)</option>
-            <option value="claude-sonnet-5">Claude Sonnet 5 (cheaper)</option>
-            <option value="claude-haiku-4-5">Claude Haiku 4.5 (cheapest)</option>
-          </select></label>
-
-        <h2>Automatic mode limits</h2>
-        <p class="muted small">Instagram limits how many new conversations an account can start. Stay low, especially on newer accounts.</p>
-        <div class="row">
-          <label>Daily cap <input id="a-dailyCap" type="number" min="1"></label>
-          <label>Active from (hour) <input id="a-startHour" type="number" min="0" max="23"></label>
-          <label>Active until (hour) <input id="a-endHour" type="number" min="0" max="24"></label>
-        </div>
-        <div class="row">
-          <label>Min gap (sec) <input id="a-minDelaySec" type="number" min="30"></label>
-          <label>Max gap (sec) <input id="a-maxDelaySec" type="number" min="30"></label>
-        </div>
-        <div class="row">
-          <label>Break after ~N DMs <input id="a-breakEvery" type="number" min="1"></label>
-          <label>Break min (min) <input id="a-breakMinMin" type="number" min="1"></label>
-          <label>Break max (min) <input id="a-breakMaxMin" type="number" min="1"></label>
-        </div>
-        <p class="warn small" id="cap-warn" hidden>More than 50 new DMs a day is very likely to get your account restricted.</p>
-
-        <h2>Browser</h2>
-        <label>Browser for the Instagram window
-          <select id="s-channel">
-            <option value="msedge">Microsoft Edge</option>
-            <option value="chrome">Google Chrome</option>
-          </select></label>
-        <div class="actions"><button class="btn primary" id="save-settings">Save</button><span class="saved muted"></span></div>
-      </div>
-    </section>
-  </main>
+      </section>
+    </main>
+  </div>
 
   <dialog id="paste-dialog">
     <form method="dialog">
-      <h2>Paste leads</h2>
-      <p class="muted small">JSON, CSV, or one Instagram handle or link per line.</p>
-      <textarea id="paste-text" rows="12"></textarea>
-      <div class="actions"><button class="btn" value="cancel">Cancel</button><button class="btn primary" id="paste-go" value="ok">Import</button></div>
+      <h3>Paste leads</h3>
+      <p class="hint">JSON, CSV, or one Instagram handle or link per line.</p>
+      <textarea id="paste-text" rows="12" placeholder="@carbone.restaurant&#10;https://www.instagram.com/hyperice/"></textarea>
+      <div class="form-foot"><button class="btn ghost" value="cancel">Cancel</button><button class="btn brand" id="paste-go" value="ok">Import</button></div>
     </form>
   </dialog>
 

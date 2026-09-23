@@ -24,7 +24,7 @@ export const DEFAULT_SETTINGS = {
     startHour: 9,
     endHour: 21,
   },
-  browser: { channel: 'msedge' },
+  browser: { channel: 'chrome' },
 };
 
 function merge(base, over) {
@@ -95,6 +95,9 @@ export function openDb(dataDir) {
     },
     deleteLead(id) {
       db.prepare(`DELETE FROM leads WHERE id = ?`).run(id);
+    },
+    deleteAllLeads() {
+      return db.prepare(`DELETE FROM leads`).run().changes;
     },
     nextReady() {
       return rowToLead(db.prepare(`SELECT * FROM leads WHERE status = 'ready'
