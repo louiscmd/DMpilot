@@ -133,14 +133,14 @@ $('#lead-rows').addEventListener('click', guarded(async (e) => {
   const act = e.target.dataset.act;
   if (!act) return;
   const id = Number(e.target.closest('tr').dataset.id);
-  if (act === 'regen') { await api('/generate', { body: { ids: [id] } }); toast('Rewriting…'); refresh(); }
+  if (act === 'regen') { await api('/generate', { body: { ids: [id] } }); await loadLeads(); refresh(); }
   if (act === 'requeue') { await api('/leads/bulk', { body: { ids: [id], action: 'requeue' } }); await loadLeads(); refresh(); }
 }));
 
 $$('[data-bulk]').forEach((b) => b.addEventListener('click', guarded(async () => {
   const ids = [...selected];
   const action = b.dataset.bulk;
-  if (action === 'generate') { await api('/generate', { body: { ids } }); toast(`Writing ${ids.length} DMs…`); refresh(); return; }
+  if (action === 'generate') { await api('/generate', { body: { ids } }); toast(`${ids.length} DMs ready`); await loadLeads(); refresh(); return; }
   if (action === 'delete' && !confirm(`Delete ${ids.length} lead${ids.length > 1 ? 's' : ''}?`)) return;
   await api('/leads/bulk', { body: { ids, action } });
   if (action === 'delete') selected.clear();
@@ -178,8 +178,10 @@ $('#paste-go').addEventListener('click', guarded(async () => {
 }));
 
 $('#gen-btn').addEventListener('click', guarded(async () => {
+  const before = lastState?.counts.new || 0;
   await api('/generate', { body: {} });
-  toast('Claude is writing DMs for all new leads…');
+  toast(`${before} DMs ready. Filter by Ready to review them.`);
+  await loadLeads();
   refresh();
 }));
 
@@ -187,10 +189,9 @@ $('#gen-btn').addEventListener('click', guarded(async () => {
 function renderSetup(st) {
   const c = st.counts;
   const steps = [
-    { done: st.setup.hasApiKey, title: 'Add Claude key', text: 'Settings → API key', act: () => go('settings') },
-    { done: st.setup.hasOffer, title: 'Describe your offer', text: 'So Claude knows what to pitch', act: () => go('campaign') },
+    { done: st.setup.hasScript, title: 'Write your DM script', text: 'Campaign tab — use {{businessName}}', act: () => go('campaign') },
     { done: c.total > 0, title: 'Import leads', text: 'Your LeadOS .json export', act: () => $('#file').click() },
-    { done: (c.ready || 0) + (c.sent || 0) > 0, title: 'Write the DMs', text: 'Then review and edit them', act: () => $('#gen-btn').click() },
+    { done: (c.ready || 0) + (c.sent || 0) > 0, title: 'Apply the script', text: 'Fills {{businessName}} for each lead', act: () => $('#gen-btn').click() },
     { done: st.browser.loggedIn, title: 'Log in to Instagram', text: 'Once, in the Chrome window', act: () => go('send') },
   ];
   const done = steps.filter((s) => s.done).length;
@@ -208,7 +209,7 @@ $('#steps').addEventListener('click', (e) => {
 });
 
 // ---------- settings + campaign ----------
-const campaignFields = ['senderName', 'offer', 'tone', 'maxWords', 'language', 'rules', 'example'];
+const campaignFields = ['script'];
 const autoFields = ['dailyCap', 'startHour', 'endHour', 'minDelaySec', 'maxDelaySec', 'breakEvery', 'breakMinMin', 'breakMaxMin'];
 
 async function loadSettings() {
@@ -218,8 +219,9 @@ async function loadSettings() {
   $('#s-model').value = settings.model;
   $('#s-channel').value = settings.browser.channel;
   $('#s-apiKey').value = '';
-  $('#s-apiKey').placeholder = settings.hasApiKey ? '•••••••••••• (saved)' : 'sk-ant-…';
-  $('#s-key-note').textContent = settings.hasApiKey ? 'A key is saved. Leave this blank to keep it.' : 'Create one at console.anthropic.com → API keys.';
+  const hasKey = !!(settings.hasApiKey);
+  $('#s-apiKey').placeholder = hasKey ? '•••••••••••• (saved)' : 'sk-ant-…';
+  $('#s-key-note').textContent = hasKey ? 'A key is saved. Leave this blank to keep it.' : 'Create one at console.anthropic.com → API keys.';
   $('#cap-warn').hidden = settings.auto.dailyCap <= 50;
 }
 
@@ -229,7 +231,7 @@ function flashSaved(sel) {
 }
 
 $('#save-campaign').addEventListener('click', guarded(async () => {
-  const campaign = Object.fromEntries(campaignFields.map((k) => [k, k === 'maxWords' ? Number($('#c-' + k).value) || 60 : $('#c-' + k).value]));
+  const campaign = Object.fromEntries(campaignFields.map((k) => [k, $('#c-' + k).value]));
   await api('/settings', { method: 'PUT', body: { campaign } });
   await loadSettings();
   flashSaved('#campaign-saved');
@@ -335,12 +337,16 @@ function renderState(st) {
 }
 
 let genWasRunning = false;
+let countsSig = '';
 async function refresh() {
   try {
     const st = await api('/state');
     renderState(st);
     const editing = document.activeElement?.closest('#lead-rows');
-    if ((st.gen.running || genWasRunning) && activeTab === 'leads' && !editing) loadLeads();
+    // Reload the list whenever statuses change on the server (writing DMs, sending), so it never shows stale rows.
+    const sig = JSON.stringify(st.counts);
+    if ((st.gen.running || genWasRunning || sig !== countsSig) && activeTab === 'leads' && !editing) loadLeads();
+    countsSig = sig;
     genWasRunning = st.gen.running;
     if (activeTab === 'send') loadLogs();
   } catch { /* server restarting */ }

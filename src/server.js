@@ -30,7 +30,7 @@ const handle = (fn) => async (req, res) => {
 app.get('/api/state', handle(async () => {
   const s = db.getSettings();
   return {
-  setup: { hasApiKey: !!(s.apiKey || process.env.ANTHROPIC_API_KEY), hasOffer: !!s.campaign.offer.trim() },
+  setup: { hasScript: !!s.campaign.script?.trim() },
   browser: { open: ig.isOpen, loggedIn: await ig.loggedIn() },
   runner: runner.state,
   gen,
@@ -93,8 +93,7 @@ app.post('/api/leads/delete-all', handle(() => {
 // ---- message writing ----
 async function generate(ids) {
   const settings = db.getSettings();
-  if (!settings.apiKey && !process.env.ANTHROPIC_API_KEY) throw new Error('Add your Claude API key in Settings first');
-  if (!settings.campaign.offer.trim()) throw new Error('Describe your offer in the Campaign tab first');
+  if (!settings.campaign.script?.trim()) throw new Error('Write your DM script in the Campaign tab first');
   const queue = ids.map((id) => db.getLead(id)).filter((l) => l && l.status !== 'sent');
   Object.assign(gen, { running: true, total: queue.length, done: 0, failed: 0, lastError: '' });
   const worker = async () => {
@@ -111,7 +110,7 @@ async function generate(ids) {
       gen.done++;
     }
   };
-  Promise.all([worker(), worker(), worker(), worker()]).finally(() => {
+  await Promise.all([worker(), worker(), worker(), worker()]).finally(() => {
     gen.running = false;
     db.log('info', `Wrote ${gen.done - gen.failed} DMs${gen.failed ? `, ${gen.failed} failed` : ''}`);
   });

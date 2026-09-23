@@ -6,13 +6,7 @@ export const DEFAULT_SETTINGS = {
   apiKey: '',
   model: 'claude-opus-5',
   campaign: {
-    senderName: '',
-    offer: '',
-    tone: 'casual, confident, friendly — like a real person typing on their phone',
-    rules: '',
-    example: '',
-    maxWords: 60,
-    language: 'English',
+    script: '',
   },
   auto: {
     dailyCap: 25,

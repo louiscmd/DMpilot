@@ -118,32 +118,23 @@
         <header class="page-head">
           <div>
             <h1>Campaign</h1>
-            <p class="sub">Tell Claude who you are and how you talk. Every lead still gets its own message, based on its LeadOS research.</p>
+            <p class="sub">Write your DM script once. It sends exactly as written — only <code>{{businessName}}</code> is swapped out per lead.</p>
           </div>
         </header>
         <div class="form-grid">
           <div class="card form">
-            <div class="field"><label for="c-senderName">Your name or brand</label><input id="c-senderName" placeholder="e.g. Louis, short-form video for restaurants"></div>
-            <div class="field"><label for="c-offer">What you offer <span class="tag">Required</span></label>
-              <textarea id="c-offer" rows="5" placeholder="What you do for clients, the result you get them, and what you want from this first DM (a reply, a quick call…)."></textarea></div>
-            <div class="field"><label for="c-tone">Tone</label><input id="c-tone"></div>
-            <div class="field-row">
-              <div class="field"><label for="c-maxWords">Max words</label><input id="c-maxWords" type="number" min="15" max="200"></div>
-              <div class="field"><label for="c-language">Language</label><input id="c-language"></div>
-            </div>
-            <div class="field"><label for="c-rules">Extra rules</label><textarea id="c-rules" rows="3" placeholder="e.g. no emojis · never mention prices · use their first name if known"></textarea></div>
-            <div class="field"><label for="c-example">An example DM you like</label><textarea id="c-example" rows="4" placeholder="Paste a DM that got replies. Claude copies the style, not the words."></textarea></div>
+            <div class="field"><label for="c-script">DM script <span class="tag">Required</span></label>
+              <textarea id="c-script" rows="10" placeholder="Hey {{businessName}}, …&#10;&#10;Use {{businessName}} wherever you want the business name to appear."></textarea></div>
             <div class="form-foot"><span class="saved" id="campaign-saved"></span><button class="btn brand" id="save-campaign">Save campaign</button></div>
           </div>
           <aside class="card tips">
-            <h3>What makes a DM get replies</h3>
+            <h3>How it works</h3>
             <ul>
-              <li>One specific thing about <em>their</em> account in the first line.</li>
-              <li>Short. It should read like a text, not an email.</li>
-              <li>One clear, low-effort question at the end.</li>
-              <li>No links in the first message.</li>
+              <li>Write the exact DM you want to send.</li>
+              <li>Use <code>{{businessName}}</code> wherever the business name should go.</li>
+              <li>When you click "Write messages", the name is filled in for each lead — no AI, no surprises.</li>
+              <li>You can still edit any individual message in the Leads tab before sending.</li>
             </ul>
-            <p class="muted small">Claude already follows these rules. Use <b>Extra rules</b> for anything specific to you.</p>
           </aside>
         </div>
       </section>
