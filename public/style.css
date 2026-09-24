@@ -240,3 +240,8 @@ dialog::backdrop { background: rgb(10 10 15 / .45); backdrop-filter: blur(3px); 
   .search input { width: 100%; }
   .search { flex: 1; }
 }
+
+.windows { display: grid; gap: 8px; }
+.window-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.window-row input { width: 72px !important; }
+.add-window { justify-self: start; }

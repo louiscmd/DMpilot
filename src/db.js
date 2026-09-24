@@ -17,6 +17,8 @@ export const DEFAULT_SETTINGS = {
     breakMaxMin: 25,
     startHour: 9,
     endHour: 21,
+    // Sending windows, each with its own cap. When set, they replace startHour/endHour.
+    windows: [],
   },
   browser: { channel: 'chrome' },
 };
@@ -104,6 +106,10 @@ export function openDb(dataDir) {
         out.total += r.n;
       }
       return out;
+    },
+    sentBetween(from, to) {
+      return db.prepare(`SELECT COUNT(*) n FROM leads WHERE status = 'sent' AND sent_at >= ? AND sent_at < ?`)
+        .get(from.toISOString(), to.toISOString()).n;
     },
     sentToday() {
       const midnight = new Date();

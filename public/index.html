@@ -223,9 +223,13 @@
             <h3>Automatic mode limits</h3>
             <p class="hint">Instagram limits how many new conversations an account can start. Keep these low, especially on a newer account.</p>
             <div class="field-row">
-              <div class="field"><label for="a-dailyCap">DMs per day</label><input id="a-dailyCap" type="number" min="1"></div>
-              <div class="field"><label for="a-startHour">Active from</label><input id="a-startHour" type="number" min="0" max="23"></div>
-              <div class="field"><label for="a-endHour">Active until</label><input id="a-endHour" type="number" min="0" max="24"></div>
+              <div class="field"><label for="a-dailyCap">DMs per day (total)</label><input id="a-dailyCap" type="number" min="1"></div>
+            </div>
+            <div class="field">
+              <label>Sending windows</label>
+              <div class="windows" id="windows"></div>
+              <button type="button" class="chip-btn add-window" id="add-window">+ Add window</button>
+              <p class="hint">DMs only go out inside these hours. Each window stops at its own max, and breaks happen inside the window.</p>
             </div>
             <div class="field-row">
               <div class="field"><label for="a-minDelaySec">Min gap (sec)</label><input id="a-minDelaySec" type="number" min="30"></div>

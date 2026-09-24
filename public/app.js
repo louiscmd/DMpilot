@@ -210,12 +210,37 @@ $('#steps').addEventListener('click', (e) => {
 
 // ---------- settings + campaign ----------
 const campaignFields = ['script'];
-const autoFields = ['dailyCap', 'startHour', 'endHour', 'minDelaySec', 'maxDelaySec', 'breakEvery', 'breakMinMin', 'breakMaxMin'];
+const autoFields = ['dailyCap', 'minDelaySec', 'maxDelaySec', 'breakEvery', 'breakMinMin', 'breakMaxMin'];
+
+function renderWindows(list) {
+  $('#windows').innerHTML = list.map((w) => `<div class="window-row">
+    <input type="number" class="w-start" min="0" max="23" value="${w.startHour}" aria-label="From hour"><span class="muted">:00 to</span>
+    <input type="number" class="w-end" min="1" max="24" value="${w.endHour}" aria-label="Until hour"><span class="muted">:00, max</span>
+    <input type="number" class="w-cap" min="1" value="${w.cap}" aria-label="Max DMs"><span class="muted">DMs</span>
+    <button type="button" class="icon-btn danger w-del" title="Remove window">${icon('trash')}</button></div>`).join('');
+}
+function readWindows() {
+  return $('.window-row').map((r) => ({
+    startHour: Number(r.querySelector('.w-start').value), endHour: Number(r.querySelector('.w-end').value), cap: Number(r.querySelector('.w-cap').value),
+  }));
+}
+$('#add-window').addEventListener('click', () => {
+  const list = readWindows();
+  const last = list[list.length - 1];
+  list.push(last ? { startHour: last.endHour, endHour: Math.min(24, last.endHour + 4), cap: 25 } : { startHour: 9, endHour: 17, cap: 25 });
+  renderWindows(list);
+});
+$('#windows').addEventListener('click', (e) => {
+  const del = e.target.closest('.w-del');
+  if (del) { del.closest('.window-row').remove(); }
+});
 
 async function loadSettings() {
   const settings = await api('/settings');
   campaignFields.forEach((k) => ($('#c-' + k).value = settings.campaign[k] ?? ''));
   autoFields.forEach((k) => ($('#a-' + k).value = settings.auto[k]));
+  const a = settings.auto;
+  renderWindows(a.windows?.length ? a.windows : [{ startHour: a.startHour, endHour: a.endHour, cap: a.dailyCap }]);
   $('#s-model').value = settings.model;
   $('#s-channel').value = settings.browser.channel;
   $('#s-apiKey').value = '';
@@ -242,6 +267,9 @@ $('#save-settings').addEventListener('click', guarded(async () => {
   const auto = Object.fromEntries(autoFields.map((k) => [k, Number($('#a-' + k).value)]));
   if (auto.minDelaySec > auto.maxDelaySec) throw new Error('Min gap must be less than max gap');
   if (auto.breakMinMin > auto.breakMaxMin) throw new Error('Break min must be less than break max');
+  auto.windows = readWindows();
+  if (!auto.windows.length) throw new Error('Add at least one sending window');
+  for (const w of auto.windows) if (!(w.endHour > w.startHour) || w.cap < 1) throw new Error('Each window needs an end hour after its start hour and a max of at least 1');
   await api('/settings', { method: 'PUT', body: {
     apiKey: $('#s-apiKey').value.trim(), model: $('#s-model').value, auto, browser: { channel: $('#s-channel').value },
   } });

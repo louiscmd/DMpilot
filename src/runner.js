@@ -4,19 +4,38 @@ const rand = (a, b) => a + Math.random() * (b - a);
 const wait = (ms) => new Promise((r) => setTimeout(r, ms));
 const STOP_CODES = new Set(['blocked', 'checkpoint', 'browser_closed']);
 
-function inHours(auto, d = new Date()) {
-  const h = d.getHours();
-  return auto.startHour <= auto.endHour
-    ? h >= auto.startHour && h < auto.endHour
-    : h >= auto.startHour || h < auto.endHour;
+/** The sending windows: explicit ones if set, else one window from startHour/endHour with the daily cap. */
+function windowsOf(auto) {
+  const list = (auto.windows || []).filter((w) => w.endHour > w.startHour && w.cap > 0);
+  return (list.length ? list : [{ startHour: auto.startHour, endHour: auto.endHour, cap: auto.dailyCap }])
+    .slice().sort((a, b) => a.startHour - b.startHour);
 }
 
-function nextStart(auto) {
+const at = (hour, dayOffset = 0) => {
   const d = new Date();
-  d.setMinutes(0, 0, 0);
-  do d.setHours(d.getHours() + 1); while (!inHours(auto, d));
+  d.setDate(d.getDate() + dayOffset);
+  d.setHours(hour, 0, 0, 0);
   return d;
+};
+
+function currentWindow(auto, now = new Date()) {
+  const h = now.getHours();
+  return windowsOf(auto).find((w) => h >= w.startHour && h < w.endHour) || null;
 }
+
+/** Start of the next window strictly after `after` (defaults to now), today or tomorrow. */
+function nextWindowStart(auto, after = new Date()) {
+  for (const day of [0, 1]) {
+    for (const w of windowsOf(auto)) {
+      const start = at(w.startHour, day);
+      if (start > after) return { start, w };
+    }
+  }
+  const w = windowsOf(auto)[0];
+  return { start: at(w.startHour, 1), w };
+}
+
+const hh = (h) => `${String(h).padStart(2, '0')}:00`;
 
 export class Runner {
   constructor({ db, ig }) {
@@ -138,15 +157,22 @@ export class Runner {
       const s = this.db.getSettings().auto;
       breakAt ??= Math.max(1, Math.round(rand(s.breakEvery - 2, s.breakEvery + 2)));
 
-      if (!inHours(s)) {
-        const at = nextStart(s);
-        await this.#sleep(at - Date.now(), 'sleeping', `Outside active hours (${s.startHour}:00–${s.endHour}:00)`);
+      const win = currentWindow(s);
+      if (!win) {
+        const next = nextWindowStart(s);
+        await this.#sleep(next.start - Date.now(), 'sleeping', `Outside sending hours. Next window ${hh(next.w.startHour)}–${hh(next.w.endHour)}`);
         continue;
       }
       if (this.db.sentToday() >= s.dailyCap) {
-        const t = new Date(); t.setDate(t.getDate() + 1); t.setHours(s.startHour, 0, 0, 0);
+        const next = nextWindowStart(s, at(23));
         this.db.log('info', `Daily cap of ${s.dailyCap} reached — resuming tomorrow`);
-        await this.#sleep(t - Date.now(), 'cap', `Daily cap reached (${s.dailyCap}). Resumes tomorrow at ${s.startHour}:00`);
+        await this.#sleep(next.start - Date.now(), 'cap', `Daily cap reached (${s.dailyCap}). Resumes tomorrow at ${hh(next.w.startHour)}`);
+        continue;
+      }
+      if (this.db.sentBetween(at(win.startHour), at(win.endHour)) >= win.cap) {
+        const next = nextWindowStart(s, at(win.endHour - 1));
+        this.db.log('info', `${win.cap} DMs sent in the ${hh(win.startHour)}–${hh(win.endHour)} window`);
+        await this.#sleep(next.start - Date.now(), 'cap', `Window ${hh(win.startHour)}–${hh(win.endHour)} full (${win.cap}). Next at ${hh(next.w.startHour)}`);
         continue;
       }
       const lead = this.db.nextReady();
