@@ -1,4 +1,4 @@
-import { IgError, snippetOf } from './instagram.js';
+import { IgError } from './instagram.js';
 
 const rand = (a, b) => a + Math.random() * (b - a);
 const wait = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -74,7 +74,7 @@ export class Runner {
   async #prepare(lead, humanlike) {
     this.#set({ lead: { id: lead.id, username: lead.username, name: lead.name, message: lead.message }, phase: 'opening', detail: `Opening @${lead.username}` });
     const box = await this.ig.openThread(lead.username);
-    if (await this.ig.threadContains(snippetOf(lead.message))) {
+    if (await this.ig.threadContains(lead.message)) {
       this.db.updateLead(lead.id, { status: 'skipped', error: 'Already in this conversation — not sent again' });
       this.db.log('warn', `@${lead.username}: message already in thread, skipped`);
       return false;
@@ -124,7 +124,7 @@ export class Runner {
       if (text.trim()) { last = text; continue; }
       // Composer emptied: sent, or the user cleared it. Confirm by finding the text in the thread.
       await wait(1500);
-      if (await this.ig.threadContains(snippetOf(last))) return 'sent';
+      if (await this.ig.threadContains(last)) return 'sent';
       last = '';
     }
   }
@@ -158,7 +158,7 @@ export class Runner {
         if (this.flags.stop) return;
         this.#set({ phase: 'sending', detail: 'Sending' });
         await this.ig.pressSend();
-        await this.ig.verifySent(snippetOf(lead.message));
+        await this.ig.verifySent(lead.message);
         this.#sent(lead);
         fails = 0;
         sinceBreak++;

@@ -129,11 +129,22 @@ export class Instagram {
     await page.getByRole('button', { name: /^(Chat|Next)$/ }).first().click({ timeout: 8000 });
   }
 
-  /** True if the open thread already contains `snippet` (we've messaged them before). */
-  async threadContains(snippet) {
-    if (!snippet) return false;
-    const n = await this.page.locator('[role="main"], main').getByText(snippet, { exact: false }).count().catch(() => 0);
-    return n > 0;
+  /**
+   * True if a chat bubble with exactly `message` is on the page (we've already sent it).
+   * Searches the whole page: Instagram opens chats from a profile as a floating window
+   * outside <main>. Matching the full text (not a prefix) matters because every DM from
+   * one script starts the same way, and inbox previews ("You: …") must not count.
+   */
+  async threadContains(message) {
+    const want = (message || '').replace(/\s+/g, '');
+    if (!want) return false;
+    return this.page.evaluate((want) => {
+      for (const el of document.body.querySelectorAll('div, span')) {
+        const t = el.textContent;
+        if (t.length >= want.length && t.length <= want.length * 2 && t.replace(/\s+/g, '') === want) return true;
+      }
+      return false;
+    }, want).catch(() => false);
   }
 
   async typeMessage(box, text, { humanlike }) {
@@ -159,22 +170,25 @@ export class Instagram {
   async pressSend() { await this.page.keyboard.press('Enter'); }
 
   /** After Enter: composer must clear, the text must show in the thread, and no error may appear. */
-  async verifySent(snippet) {
+  async verifySent(message) {
     const deadline = Date.now() + 10000;
     while (Date.now() < deadline) {
       await this.page.waitForTimeout(700);
       await this.#guard();
-      const body = await this.page.locator('[role="main"], main').first().innerText().catch(() => '');
-      if (FAIL_RE.test(body)) throw new IgError('blocked', 'Instagram shows the message as not sent');
+      // Only read the chat window itself (the composer's nearest ancestor holding the message),
+      // not the profile behind it, whose bio could contain any words.
+      const chat = await this.page.evaluate((want) => {
+        const boxes = document.querySelectorAll('div[role="textbox"][contenteditable="true"]');
+        for (let el = boxes[boxes.length - 1]; el; el = el.parentElement) {
+          if (el.textContent.replace(/\s+/g, '').includes(want)) return el.innerText;
+        }
+        return '';
+      }, (message || '').replace(/\s+/g, '')).catch(() => '');
+      if (FAIL_RE.test(chat)) throw new IgError('blocked', 'Instagram shows the message as not sent');
       const left = (await this.composerText()) ?? '';
-      if (!left.trim() && await this.threadContains(snippet)) return true;
+      if (!left.trim() && await this.threadContains(message)) return true;
     }
     throw new IgError('not_confirmed', "Couldn't confirm the message was sent");
   }
 }
 
-/** A short, distinctive piece of a message used to find it in the thread. */
-export function snippetOf(text) {
-  const line = (text || '').split('\n').map((l) => l.trim()).find((l) => l.length > 0) || '';
-  return line.slice(0, 35);
-}
